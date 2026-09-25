@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { UNDEFINED_WINNER_ID } from "@/lib/storage";
-import type { Participant, RouletteSettings } from "@/types/roulette";
+import type { ConfiguredWinner, Participant, RouletteSettings } from "@/types/roulette";
 
 type SettingsModalProps = {
   open: boolean;
@@ -21,16 +21,26 @@ export function SettingsModal({ open, participants, settings, onClose, onSave }:
 }
 
 function SettingsForm({ participants, settings, onClose, onSave }: Omit<SettingsModalProps, "open">) {
-  const [draft, setDraft] = useState(settings);
-  const manualWinnerMatches = participants.some((participant) => sameName(participant.name, draft.configuredWinnerName));
+  const initialConfiguredWinners = getInitialConfiguredWinners(settings);
+  const [draft, setDraft] = useState<RouletteSettings>({
+    ...settings,
+    configuredWinners: initialConfiguredWinners
+  });
+  const [configuredWinnerInput, setConfiguredWinnerInput] = useState(initialConfiguredWinners.map((winner) => winner.name).join("\n"));
+  const configuredWinnerRows = parseConfiguredWinnerInput(configuredWinnerInput);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 px-4">
       <form
-        className="w-full max-w-md rounded bg-white p-6 shadow-2xl"
+        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded bg-white p-6 shadow-2xl"
         onSubmit={(event) => {
           event.preventDefault();
-          onSave(draft);
+          onSave({
+            ...draft,
+            configuredWinnerId: configuredWinnerRows[0]?.id ?? UNDEFINED_WINNER_ID,
+            configuredWinnerName: configuredWinnerRows[0]?.name ?? "",
+            configuredWinners: configuredWinnerRows
+          });
           onClose();
         }}
       >
@@ -82,45 +92,35 @@ function SettingsForm({ participants, settings, onClose, onSave }: Omit<Settings
           </label>
         </fieldset>
 
-        <label className="mb-4 block">
-          <span className="mb-1 block text-sm font-semibold text-slate-700">Ganador configurado</span>
-          <input
-            value={draft.configuredWinnerName}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                configuredWinnerName: event.target.value
-              }))
-            }
-            placeholder="Escribe un nombre"
-            className="mb-2 w-full rounded border border-slate-300 px-3 py-2 outline-none ring-blue-500 focus:ring-2"
-          />
-          <select
-            value={draft.configuredWinnerId}
-            onChange={(event) => {
-              const participant = participants.find((item) => item.id === event.target.value);
-              setDraft((current) => ({
-                ...current,
-                configuredWinnerId: event.target.value,
-                configuredWinnerName: participant?.name ?? current.configuredWinnerName
-              }));
-            }}
-            className="w-full rounded border border-slate-300 px-3 py-2 outline-none ring-blue-500 focus:ring-2"
-          >
-            <option value={UNDEFINED_WINNER_ID}>Sin definir</option>
-            {draft.configuredWinnerId !== UNDEFINED_WINNER_ID && !participants.some((participant) => participant.id === draft.configuredWinnerId) ? (
-              <option value={draft.configuredWinnerId}>Sin ganador configurado v&aacute;lido</option>
+        {draft.mode === "configured" ? (
+          <div className="mb-4">
+            <label className="block">
+              <span className="mb-1 block text-sm font-semibold text-slate-700">Orden configurado</span>
+              <textarea
+                value={configuredWinnerInput}
+                onChange={(event) => setConfiguredWinnerInput(event.target.value)}
+                placeholder={"Nombre para posicion 1\nNombre para posicion 2\nNombre para posicion 3"}
+                className="min-h-[150px] w-full resize-y rounded border border-slate-300 px-3 py-2 text-sm leading-6 outline-none ring-blue-500 focus:ring-2"
+              />
+            </label>
+
+            {configuredWinnerRows.length > 0 ? (
+              <div className="mt-3 max-h-40 overflow-y-auto rounded border border-slate-200">
+                {configuredWinnerRows.map((winner, index) => {
+                  const winnerMatches = participants.some((participant) => sameName(participant.name, winner.name));
+
+                  return (
+                    <div key={`${index}-${winner.name}`} className="flex items-center gap-3 border-b border-slate-100 px-3 py-2 text-sm last:border-b-0">
+                      <strong className="w-20 shrink-0 text-slate-700">Posici&oacute;n {index + 1}</strong>
+                      <span className="min-w-0 flex-1 truncate text-slate-900">{winner.name}</span>
+                      {!winnerMatches ? <span className="shrink-0 text-xs text-slate-500">No coincide</span> : null}
+                    </div>
+                  );
+                })}
+              </div>
             ) : null}
-            {participants.map((participant) => (
-              <option key={participant.id} value={participant.id}>
-                {participant.name}
-              </option>
-            ))}
-          </select>
-          {draft.configuredWinnerName.trim() && !manualWinnerMatches ? (
-            <span className="mt-1 block text-xs text-slate-500">Guardado, pero no coincide con la lista activa.</span>
-          ) : null}
-        </label>
+          </div>
+        ) : null}
 
         <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
           <input
@@ -145,6 +145,29 @@ function SettingsForm({ participants, settings, onClose, onSave }: Omit<Settings
       </form>
     </div>
   );
+}
+
+function getInitialConfiguredWinners(settings: RouletteSettings): ConfiguredWinner[] {
+  if (settings.configuredWinners.length > 0) {
+    return settings.configuredWinners;
+  }
+
+  if (settings.configuredWinnerId !== UNDEFINED_WINNER_ID || settings.configuredWinnerName.trim()) {
+    return [{ id: settings.configuredWinnerId, name: settings.configuredWinnerName }];
+  }
+
+  return [];
+}
+
+function parseConfiguredWinnerInput(value: string): ConfiguredWinner[] {
+  return value
+    .split("\n")
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map((name) => ({
+      id: UNDEFINED_WINNER_ID,
+      name
+    }));
 }
 
 function sameName(left: string, right: string): boolean {

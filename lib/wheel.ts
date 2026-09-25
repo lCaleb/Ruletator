@@ -33,16 +33,22 @@ export function getSectorCenterAngle(index: number, total: number): number {
   return (360 / total) * index + 180 / total;
 }
 
-export function getTargetRotation(winnerIndex: number, participants: Participant[], rounds: number): number {
+export function getTargetRotation(winnerIndex: number, participants: Participant[], rounds: number, targetAngleOffset = 0): number {
   const centerAngle = getSectorCenterAngle(winnerIndex, participants.length);
   const pointerAngle = 90;
-  const targetOffset = ((pointerAngle - centerAngle) + 360) % 360;
+  const targetOffset = ((pointerAngle - (centerAngle + targetAngleOffset)) + 360) % 360;
 
   return rounds * 360 + targetOffset;
 }
 
-export function getSpinDelta(currentRotation: number, winnerIndex: number, participants: Participant[], rounds: number): number {
-  const targetRotation = getTargetRotation(winnerIndex, participants, rounds);
+export function getSpinDelta(
+  currentRotation: number,
+  winnerIndex: number,
+  participants: Participant[],
+  rounds: number,
+  targetAngleOffset = 0
+): number {
+  const targetRotation = getTargetRotation(winnerIndex, participants, rounds, targetAngleOffset);
   const currentOffset = ((currentRotation % 360) + 360) % 360;
   const targetOffset = ((targetRotation % 360) + 360) % 360;
   const adjustment = ((targetOffset - currentOffset) + 360) % 360;

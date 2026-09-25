@@ -1,4 +1,4 @@
-import type { Participant, RouletteResult, RouletteSettings, StoredRouletteState } from "@/types/roulette";
+import type { ConfiguredWinner, Participant, RouletteResult, RouletteSettings, StoredRouletteState } from "@/types/roulette";
 
 const STORAGE_KEY = "ruletator:v1";
 export const UNDEFINED_WINNER_ID = "__undefined__";
@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: RouletteSettings = {
   mode: "random",
   configuredWinnerId: UNDEFINED_WINNER_ID,
   configuredWinnerName: "",
+  configuredWinners: [],
   sound: true,
   confetti: true
 };
@@ -23,7 +24,8 @@ export const DEFAULT_STATE: StoredRouletteState = {
   participantInput: DEFAULT_PARTICIPANTS.map((participant) => participant.name).join("\n"),
   settings: DEFAULT_SETTINGS,
   history: [],
-  configuredWinnerUsed: false
+  configuredWinnerUsed: false,
+  configuredWinnerIndex: 0
 };
 
 export function loadRouletteState(): StoredRouletteState {
@@ -52,7 +54,8 @@ export function loadRouletteState(): StoredRouletteState {
         configuredWinnerId: UNDEFINED_WINNER_ID
       },
       history: Array.isArray(parsed.history) ? parsed.history.slice(0, 20) : [],
-      configuredWinnerUsed: false
+      configuredWinnerUsed: false,
+      configuredWinnerIndex: 0
     };
   } catch {
     return DEFAULT_STATE;
@@ -99,6 +102,13 @@ function sanitizeSettings(settings: unknown): RouletteSettings {
   }
 
   const candidate = settings as Partial<RouletteSettings>;
+  const configuredWinnerId =
+    typeof candidate.configuredWinnerId === "string"
+      ? candidate.configuredWinnerId
+      : DEFAULT_SETTINGS.configuredWinnerId;
+  const configuredWinnerName = typeof candidate.configuredWinnerName === "string" ? candidate.configuredWinnerName : "";
+  const configuredWinners = sanitizeConfiguredWinners(candidate.configuredWinners, configuredWinnerId, configuredWinnerName);
+
   return {
     title: typeof candidate.title === "string" && candidate.title.trim() ? candidate.title.trim() : DEFAULT_SETTINGS.title,
     spinDuration:
@@ -106,12 +116,40 @@ function sanitizeSettings(settings: unknown): RouletteSettings {
         ? candidate.spinDuration
         : DEFAULT_SETTINGS.spinDuration,
     mode: candidate.mode === "configured" ? "configured" : "random",
-    configuredWinnerId:
-      typeof candidate.configuredWinnerId === "string"
-        ? candidate.configuredWinnerId
-        : DEFAULT_SETTINGS.configuredWinnerId,
-    configuredWinnerName: typeof candidate.configuredWinnerName === "string" ? candidate.configuredWinnerName : "",
+    configuredWinnerId,
+    configuredWinnerName,
+    configuredWinners,
     sound: candidate.sound !== false,
     confetti: candidate.confetti !== false
   };
+}
+
+function sanitizeConfiguredWinners(
+  configuredWinners: unknown,
+  legacyWinnerId: string,
+  legacyWinnerName: string
+): ConfiguredWinner[] {
+  if (Array.isArray(configuredWinners)) {
+    return configuredWinners
+      .map((winner) => {
+        if (!winner || typeof winner !== "object") {
+          return null;
+        }
+
+        const item = winner as Partial<ConfiguredWinner>;
+        const id = typeof item.id === "string" ? item.id : UNDEFINED_WINNER_ID;
+        const name = typeof item.name === "string" ? item.name.trim() : "";
+
+        return id !== UNDEFINED_WINNER_ID || name ? { id, name } : null;
+      })
+      .filter(Boolean) as ConfiguredWinner[];
+  }
+
+  const name = legacyWinnerName.trim();
+
+  if (legacyWinnerId !== UNDEFINED_WINNER_ID || name) {
+    return [{ id: legacyWinnerId, name }];
+  }
+
+  return [];
 }

@@ -8,10 +8,24 @@ import { ResultBar } from "@/components/ResultBar";
 import { SettingsModal } from "@/components/SettingsModal";
 import { Wheel } from "@/components/Wheel";
 import { useRoulette } from "@/hooks/useRoulette";
+import { useWheelColors } from "@/hooks/useWheelColors";
 
 export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [lastResultColor, setLastResultColor] = useState<string | undefined>();
   const roulette = useRoulette();
+  const wheelColors = useWheelColors(roulette.participants);
+  const visibleResult = roulette.activeResult ?? roulette.hiddenResult;
+  const visibleResultColor =
+    visibleResult && roulette.participants.length > 0
+      ? wheelColors[roulette.participants.findIndex((participant) => participant.id === visibleResult.participant.id)]
+      : undefined;
+
+  useEffect(() => {
+    if (visibleResultColor) {
+      setLastResultColor(visibleResultColor);
+    }
+  }, [visibleResultColor]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -49,6 +63,7 @@ export default function Home() {
             participants={roulette.participants}
             rotation={roulette.rotation}
             duration={roulette.settings.spinDuration}
+            colors={wheelColors}
             isSpinning={roulette.isSpinning}
             canSpin={!roulette.isSpinning && roulette.participants.length > 0}
             showHint={roulette.showSpinHint}
@@ -63,7 +78,9 @@ export default function Home() {
             {roulette.isSpinning ? "Girando..." : "Girar"}
           </button>
           <ResultBar
-            result={roulette.activeResult}
+            result={visibleResult}
+            color={visibleResultColor ?? lastResultColor}
+            hidden={!roulette.activeResult && Boolean(roulette.hiddenResult)}
             isRemoving={roulette.removingParticipantId === roulette.activeResult?.participant.id}
             onReset={roulette.clearResult}
             onRemove={roulette.removeActiveResultParticipant}
@@ -82,6 +99,7 @@ export default function Home() {
             onChange={roulette.updateParticipants}
             onClear={roulette.clearParticipants}
             onReset={roulette.resetParticipants}
+            onResetConfiguration={roulette.resetParticipantsConfiguration}
           />
           <History />
         </div>

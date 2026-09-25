@@ -1,20 +1,21 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { describeSector, getSectorCenterAngle, getWheelColor, polarToCartesian } from "@/lib/wheel";
+import { describeSector, getSectorCenterAngle, polarToCartesian } from "@/lib/wheel";
 import type { Participant } from "@/types/roulette";
 
 type WheelProps = {
   participants: Participant[];
   rotation: number;
   duration: number;
+  colors: string[];
   isSpinning: boolean;
   canSpin: boolean;
   showHint: boolean;
   onSpin: () => void;
 };
 
-export function Wheel({ participants, rotation, duration, isSpinning, canSpin, showHint, onSpin }: WheelProps) {
+export function Wheel({ participants, rotation, duration, colors, isSpinning, canSpin, showHint, onSpin }: WheelProps) {
   const total = participants.length;
   const sectorAngle = 360 / total;
   const labelRadius = total <= 3 ? 102 : 132;
@@ -44,7 +45,7 @@ export function Wheel({ participants, rotation, duration, isSpinning, canSpin, s
           }}
           aria-label="Ruleta"
         >
-          <circle cx="210" cy="210" r="198" fill={getWheelColor(0, total)} stroke="rgba(15, 23, 42, 0.22)" strokeWidth="1" />
+          <circle cx="210" cy="210" r="198" fill={colors[0] ?? "#e2e8f0"} stroke="rgba(15, 23, 42, 0.22)" strokeWidth="1" />
           <text
             x="210"
             y="96"
@@ -86,7 +87,7 @@ export function Wheel({ participants, rotation, duration, isSpinning, canSpin, s
               <g key={participant.id}>
                 <path
                   d={describeSector(210, 210, 198, startAngle, endAngle)}
-                  fill={getWheelColor(index, total)}
+                  fill={colors[index] ?? "#e2e8f0"}
                   stroke="rgba(15, 23, 42, 0.22)"
                   strokeWidth="1"
                 />
@@ -98,7 +99,7 @@ export function Wheel({ participants, rotation, duration, isSpinning, canSpin, s
                   fill="#050505"
                   fontSize={getLabelFontSize(participant.name, total, maxLabelWidth)}
                   fontWeight="700"
-                  transform={`rotate(${textAngle + 90} ${textPosition.x} ${textPosition.y})`}
+                  transform={`rotate(${getReadableLabelRotation(textAngle)} ${textPosition.x} ${textPosition.y})`}
                 >
                   {participant.name}
                 </text>
@@ -148,4 +149,14 @@ function getLabelFontSize(label: string, total: number, maxWidth: number): numbe
   const sizeFromLength = Math.floor(maxWidth / (Math.max(label.length, 1) * estimatedCharacterWidth));
 
   return Math.max(minSize, Math.min(baseSize, sizeFromLength));
+}
+
+function getReadableLabelRotation(textAngle: number): number {
+  const rotation = (textAngle + 90) % 360;
+
+  if (rotation > 90 && rotation < 270) {
+    return rotation - 180;
+  }
+
+  return rotation;
 }
