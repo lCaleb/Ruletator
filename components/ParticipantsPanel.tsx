@@ -25,7 +25,7 @@ export function ParticipantsPanel({ participants, value, onChange, onClear, onRe
     resetClickTimeoutRef.current = window.setTimeout(() => {
       onReset();
       resetClickTimeoutRef.current = null;
-    }, 220);
+    }, 500);
   }
 
   function handleResetDoubleClick() {
