@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { describeSector, getSectorCenterAngle, polarToCartesian } from "@/lib/wheel";
 import type { Participant } from "@/types/roulette";
 
+const SPIN_TIMING_FUNCTION = "cubic-bezier(0.18, 0.72, 0.08, 1)";
+
 type WheelProps = {
   participants: Participant[];
   rotation: number;
@@ -41,7 +43,7 @@ export function Wheel({ participants, rotation, duration, colors, isSpinning, ca
           className="h-full w-full drop-shadow-wheel"
           style={{
             transform: `rotate(${rotation}deg)`,
-            transition: isSpinning ? `transform ${duration}s cubic-bezier(0.12, 0.76, 0.15, 1)` : "none"
+            transition: isSpinning ? `transform ${duration}s ${SPIN_TIMING_FUNCTION}` : "none"
           }}
           aria-label="Ruleta"
         >
@@ -72,7 +74,7 @@ export function Wheel({ participants, rotation, duration, colors, isSpinning, ca
         className="h-full w-full drop-shadow-wheel"
         style={{
           transform: `rotate(${rotation}deg)`,
-          transition: isSpinning ? `transform ${duration}s cubic-bezier(0.12, 0.76, 0.15, 1)` : "none"
+          transition: isSpinning ? `transform ${duration}s ${SPIN_TIMING_FUNCTION}` : "none"
         }}
         aria-label="Ruleta"
       >

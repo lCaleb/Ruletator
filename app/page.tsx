@@ -12,7 +12,6 @@ import { useWheelColors } from "@/hooks/useWheelColors";
 
 export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [lastResultColor, setLastResultColor] = useState<string | undefined>();
   const roulette = useRoulette();
   const wheelColors = useWheelColors(roulette.participants);
   const visibleResult = roulette.activeResult ?? roulette.hiddenResult;
@@ -20,12 +19,6 @@ export default function Home() {
     visibleResult && roulette.participants.length > 0
       ? wheelColors[roulette.participants.findIndex((participant) => participant.id === visibleResult.participant.id)]
       : undefined;
-
-  useEffect(() => {
-    if (visibleResultColor) {
-      setLastResultColor(visibleResultColor);
-    }
-  }, [visibleResultColor]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -79,7 +72,7 @@ export default function Home() {
           </button>
           <ResultBar
             result={visibleResult}
-            color={visibleResultColor ?? lastResultColor}
+            color={visibleResultColor}
             hidden={!roulette.activeResult && Boolean(roulette.hiddenResult)}
             isRemoving={roulette.removingParticipantId === roulette.activeResult?.participant.id}
             onReset={roulette.clearResult}
@@ -96,7 +89,9 @@ export default function Home() {
           <ParticipantsPanel
             participants={roulette.participants}
             value={roulette.participantInput}
+            title={roulette.settings.title}
             onChange={roulette.updateParticipants}
+            onTitleChange={roulette.updateTitle}
             onClear={roulette.clearParticipants}
             onReset={roulette.resetParticipants}
             onResetConfiguration={roulette.resetParticipantsConfiguration}

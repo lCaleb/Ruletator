@@ -52,15 +52,6 @@ function SettingsForm({ participants, settings, onClose, onSave }: Omit<Settings
         </div>
 
         <label className="mb-4 block">
-          <span className="mb-1 block text-sm font-semibold text-slate-700">T&iacute;tulo</span>
-          <input
-            value={draft.title}
-            onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-            className="w-full rounded border border-slate-300 px-3 py-2 outline-none ring-blue-500 focus:ring-2"
-          />
-        </label>
-
-        <label className="mb-4 block">
           <span className="mb-1 block text-sm font-semibold text-slate-700">Duraci&oacute;n del giro</span>
           <input
             type="number"
@@ -160,14 +151,21 @@ function getInitialConfiguredWinners(settings: RouletteSettings): ConfiguredWinn
 }
 
 function parseConfiguredWinnerInput(value: string): ConfiguredWinner[] {
-  return value
-    .split("\n")
-    .map((name) => name.trim())
-    .filter(Boolean)
-    .map((name) => ({
+  const rows = value.split("\n").map((name) => normalizeConfiguredPlaceholder(name.trim()));
+  const lastConfiguredIndex = rows.findLastIndex(Boolean);
+
+  if (lastConfiguredIndex === -1) {
+    return [];
+  }
+
+  return rows.slice(0, lastConfiguredIndex + 1).map((name) => ({
       id: UNDEFINED_WINNER_ID,
       name
     }));
+}
+
+function normalizeConfiguredPlaceholder(value: string): string {
+  return /^[-_*.]+$/.test(value) ? "" : value;
 }
 
 function sameName(left: string, right: string): boolean {

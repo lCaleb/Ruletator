@@ -9,6 +9,7 @@ import type { ConfiguredWinner, Participant, RouletteResult, RouletteSettings, S
 type PendingSpin = {
   result: RouletteResult;
   configuredWinnerUsed: boolean;
+  nextConfiguredWinnerIndex: number;
   endAt: number;
 };
 
@@ -41,6 +42,7 @@ export function useRoulette() {
     setState((current) => ({
       ...current,
       configuredWinnerUsed: pendingSpin.configuredWinnerUsed ? true : current.configuredWinnerUsed,
+      configuredWinnerIndex: pendingSpin.nextConfiguredWinnerIndex,
       history: [pendingSpin.result, ...current.history].slice(0, 20)
     }));
     setActiveResult(pendingSpin.result);
@@ -200,6 +202,16 @@ export function useRoulette() {
     }));
   }, []);
 
+  const updateTitle = useCallback((title: string) => {
+    setState((current) => ({
+      ...current,
+      settings: {
+        ...current.settings,
+        title
+      }
+    }));
+  }, []);
+
   const spin = useCallback(() => {
     const activeParticipants = parseActiveParticipants(state.participantInput);
 
@@ -208,12 +220,16 @@ export function useRoulette() {
     }
 
     const configuredWinnerResult =
-      state.settings.mode === "configured" && state.settings.configuredWinners.length > 0
-        ? findNextConfiguredParticipant(state.settings.configuredWinners, activeParticipants, state.configuredWinnerIndex)
+      state.settings.mode === "configured" && state.settings.configuredWinners.length > state.configuredWinnerIndex
+        ? findConfiguredParticipant(state.settings.configuredWinners[state.configuredWinnerIndex], activeParticipants)
         : null;
+    const nextConfiguredWinnerIndex =
+      state.settings.mode === "configured" && state.settings.configuredWinners.length > state.configuredWinnerIndex
+        ? state.configuredWinnerIndex + 1
+        : state.configuredWinnerIndex;
 
     const shouldUseConfiguredWinner = configuredWinnerResult !== null;
-    const winner = configuredWinnerResult?.participant ?? activeParticipants[secureRandomInt(activeParticipants.length)];
+    const winner = configuredWinnerResult ?? activeParticipants[secureRandomInt(activeParticipants.length)];
     const winnerIndex = activeParticipants.findIndex((participant) => participant.id === winner.id);
     const spinDelta = getSpinDelta(
       rotation,
@@ -227,6 +243,7 @@ export function useRoulette() {
     const pendingSpin: PendingSpin = {
       result,
       configuredWinnerUsed: shouldUseConfiguredWinner,
+      nextConfiguredWinnerIndex,
       endAt: Date.now() + spinDuration * 1000
     };
 
@@ -270,16 +287,11 @@ export function useRoulette() {
     }
 
     const participantId = activeResult.participant.id;
-    const nextConfiguredWinnerIndex =
-      activeResult.mode === "configured"
-        ? getNextConfiguredWinnerIndex(state.settings.configuredWinners, activeResult.participant.name, state.configuredWinnerIndex)
-        : state.configuredWinnerIndex;
     setRemovingParticipantId(participantId);
     const nextParticipantInput = strikeParticipantLine(state.participantInput, activeResult.participant.name);
     setState((current) => ({
       ...current,
-      participantInput: nextParticipantInput,
-      configuredWinnerIndex: nextConfiguredWinnerIndex
+      participantInput: nextParticipantInput
     }));
 
     if (removeTimeoutRef.current) {
@@ -297,7 +309,7 @@ export function useRoulette() {
       setRemovingParticipantId(null);
       removeTimeoutRef.current = null;
     }, 550);
-  }, [activeResult, removingParticipantId, state.configuredWinnerIndex, state.participantInput, state.settings.configuredWinners]);
+  }, [activeResult, removingParticipantId, state.participantInput]);
 
   return {
     participants: state.participants,
@@ -318,6 +330,7 @@ export function useRoulette() {
     clearParticipants,
     resetParticipants,
     resetParticipantsConfiguration,
+    updateTitle,
     updateSettings
   };
 }
@@ -371,15 +384,16 @@ function getRandomTargetAngleOffset(totalParticipants: number): number {
 function resolveSettingsWinner(settings: RouletteSettings, participants: Participant[]): RouletteSettings {
   const configuredWinners = settings.configuredWinners
     .map((winner) => resolveConfiguredWinner(winner, participants))
-    .filter((winner) => winner.id !== UNDEFINED_WINNER_ID || winner.name);
-  const firstWinner = configuredWinners[0] ?? { id: UNDEFINED_WINNER_ID, name: "" };
+  const lastConfiguredIndex = configuredWinners.findLastIndex((winner) => winner.id !== UNDEFINED_WINNER_ID || winner.name);
+  const positionedConfiguredWinners = lastConfiguredIndex === -1 ? [] : configuredWinners.slice(0, lastConfiguredIndex + 1);
+  const firstWinner = positionedConfiguredWinners[0] ?? { id: UNDEFINED_WINNER_ID, name: "" };
 
   return {
     ...settings,
     mode: settings.mode,
     configuredWinnerId: firstWinner.id,
     configuredWinnerName: firstWinner.name,
-    configuredWinners,
+    configuredWinners: positionedConfiguredWinners,
     spinDuration: getSafeSpinDuration(settings.spinDuration)
   };
 }
@@ -402,35 +416,6 @@ function findConfiguredParticipant(winner: ConfiguredWinner, participants: Parti
     participants.find((participant) => participant.id === winner.id) ??
     null
   );
-}
-
-function findNextConfiguredParticipant(
-  winners: ConfiguredWinner[],
-  participants: Participant[],
-  startIndex: number
-): { participant: Participant; nextIndex: number } | null {
-  for (let index = startIndex; index < winners.length; index += 1) {
-    const participant = findConfiguredParticipant(winners[index], participants);
-
-    if (participant) {
-      return {
-        participant,
-        nextIndex: index + 1
-      };
-    }
-  }
-
-  return null;
-}
-
-function getNextConfiguredWinnerIndex(winners: ConfiguredWinner[], participantName: string, startIndex: number): number {
-  for (let index = startIndex; index < winners.length; index += 1) {
-    if (sameName(winners[index].name, participantName)) {
-      return index + 1;
-    }
-  }
-
-  return startIndex;
 }
 
 function sameName(left: string, right: string): boolean {

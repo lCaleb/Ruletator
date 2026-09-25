@@ -6,14 +6,28 @@ import type { Participant } from "@/types/roulette";
 type ParticipantsPanelProps = {
   participants: Participant[];
   value: string;
+  title: string;
   onChange: (names: string) => void;
+  onTitleChange: (title: string) => void;
   onClear: () => void;
   onReset: () => void;
   onResetConfiguration: () => void;
 };
 
-export function ParticipantsPanel({ participants, value, onChange, onClear, onReset, onResetConfiguration }: ParticipantsPanelProps) {
+export function ParticipantsPanel({
+  participants,
+  value,
+  title,
+  onChange,
+  onTitleChange,
+  onClear,
+  onReset,
+  onResetConfiguration
+}: ParticipantsPanelProps) {
   const [scrollTop, setScrollTop] = useState(0);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(title);
+  const [titleBeforeEdit, setTitleBeforeEdit] = useState(title);
   const resetClickTimeoutRef = useRef<number | null>(null);
   const renderedLines = useMemo(() => renderParticipantLines(value), [value]);
 
@@ -35,6 +49,18 @@ export function ParticipantsPanel({ participants, value, onChange, onClear, onRe
     }
 
     onResetConfiguration();
+  }
+
+  function saveTitle() {
+    const nextTitle = titleDraft.trim();
+
+    if (nextTitle) {
+      onTitleChange(nextTitle);
+    } else {
+      setTitleDraft(title);
+    }
+
+    setEditingTitle(false);
   }
 
   return (
@@ -78,6 +104,51 @@ export function ParticipantsPanel({ participants, value, onChange, onClear, onRe
         >
           Restablecer lista
         </button>
+      </div>
+      <div className="mt-2">
+        {editingTitle ? (
+          <div className="flex gap-2">
+            <input
+              value={titleDraft}
+              onChange={(event) => {
+                setTitleDraft(event.target.value);
+
+                if (event.target.value.trim()) {
+                  onTitleChange(event.target.value);
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  saveTitle();
+                }
+
+                if (event.key === "Escape") {
+                  setTitleDraft(titleBeforeEdit);
+                  onTitleChange(titleBeforeEdit);
+                  setEditingTitle(false);
+                }
+              }}
+              className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1 text-xs outline-none ring-blue-500 focus:ring-2"
+              aria-label="Nuevo t&iacute;tulo"
+              autoFocus
+            />
+            <button type="button" onClick={saveTitle} className="px-2 py-1 text-xs font-bold text-slate-700 transition hover:bg-slate-100">
+              Guardar
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setTitleDraft(title);
+              setTitleBeforeEdit(title);
+              setEditingTitle(true);
+            }}
+            className="px-2 py-1 text-left text-xs font-bold text-slate-700 transition hover:bg-slate-100"
+          >
+            Modificar t&iacute;tulo
+          </button>
+        )}
       </div>
       <p className="mt-2 text-xs text-slate-500">La ruleta se actualiza al instante.</p>
     </section>

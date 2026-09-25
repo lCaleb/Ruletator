@@ -130,8 +130,7 @@ function sanitizeConfiguredWinners(
   legacyWinnerName: string
 ): ConfiguredWinner[] {
   if (Array.isArray(configuredWinners)) {
-    return configuredWinners
-      .map((winner) => {
+    const winners = configuredWinners.map((winner) => {
         if (!winner || typeof winner !== "object") {
           return null;
         }
@@ -140,9 +139,12 @@ function sanitizeConfiguredWinners(
         const id = typeof item.id === "string" ? item.id : UNDEFINED_WINNER_ID;
         const name = typeof item.name === "string" ? item.name.trim() : "";
 
-        return id !== UNDEFINED_WINNER_ID || name ? { id, name } : null;
+        return { id, name };
       })
       .filter(Boolean) as ConfiguredWinner[];
+    const lastConfiguredIndex = winners.findLastIndex((winner) => winner.id !== UNDEFINED_WINNER_ID || winner.name);
+
+    return lastConfiguredIndex === -1 ? [] : winners.slice(0, lastConfiguredIndex + 1);
   }
 
   const name = legacyWinnerName.trim();
