@@ -2,6 +2,8 @@
 
 Ruleta en Next.js con participantes y configuración guardados en el navegador.
 
+El [inventario y plan de crecimiento](ROADMAP.md) reúne los juegos, calculadoras, contenido de educación en Colombia y tareas de SEO y monetización pendientes.
+
 ## Desarrollo y comprobación
 
 ```powershell
