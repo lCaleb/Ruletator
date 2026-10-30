@@ -9,6 +9,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { Wheel } from "@/components/Wheel";
 import { useRoulette } from "@/hooks/useRoulette";
 import { useWheelColors } from "@/hooks/useWheelColors";
+import { adSlots } from "@/lib/ads";
 
 export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -46,8 +47,8 @@ export default function Home() {
 
       <div className="mx-auto grid max-w-7xl gap-6 px-5 py-5 lg:grid-cols-[300px_minmax(360px,1fr)_310px]">
         <div className="order-3 space-y-6 lg:order-1">
-          <AdSlot />
-          <AdSlot variant="large" />
+          <AdSlot slot={adSlots.sidebarTop} />
+          <AdSlot slot={adSlots.sidebarBottom} variant="large" demoOffset={1} />
         </div>
 
         <section className="order-1 text-center lg:order-2">

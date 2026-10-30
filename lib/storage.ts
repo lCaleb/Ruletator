@@ -40,15 +40,22 @@ export function loadRouletteState(): StoredRouletteState {
 
   try {
     const parsed = JSON.parse(rawState) as Partial<StoredRouletteState>;
-    const participants = sanitizeParticipants(parsed.participants);
+    let participants = sanitizeParticipants(parsed.participants);
     const settings = sanitizeSettings(parsed.settings);
+
+    let participantInput =
+      typeof parsed.participantInput === "string" && parsed.participantInput.trim()
+        ? parsed.participantInput
+        : participants.map((participant) => participant.name).join("\n");
+
+    if (isDefaultNumberListMissingFirst(participantInput)) {
+      participants = DEFAULT_PARTICIPANTS;
+      participantInput = DEFAULT_STATE.participantInput;
+    }
 
     return {
       participants,
-      participantInput:
-        typeof parsed.participantInput === "string"
-          ? parsed.participantInput
-          : participants.map((participant) => participant.name).join("\n"),
+      participantInput,
       settings: {
         ...settings,
         configuredWinnerId: UNDEFINED_WINNER_ID
@@ -93,7 +100,20 @@ function sanitizeParticipants(participants: unknown): Participant[] {
     })
     .filter(Boolean) as Participant[];
 
-  return clean;
+  return clean.length > 0 ? clean : DEFAULT_PARTICIPANTS;
+}
+
+function isDefaultNumberListMissingFirst(value: string): boolean {
+  const names = value
+    .split("\n")
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  return (
+    names.length > 0 &&
+    names.length < DEFAULT_PARTICIPANTS.length &&
+    names.every((name, index) => name === `${index + 2}`)
+  );
 }
 
 function sanitizeSettings(settings: unknown): RouletteSettings {
